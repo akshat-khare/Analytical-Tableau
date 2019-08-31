@@ -183,7 +183,7 @@ let rec find_assignments_fn thisPath allPath a = match a with
 														(match ans with
 														| (f,g) -> if g=b then (thisPath::allPath )else allPath)
 													with Not_found -> ((c,b)::thisPath)::allPath)
-										| _ -> (thisPath::allPath)
+										| _ -> if (length thisPath > 0) then (thisPath::allPath) else allPath
 										)
 | Node(p,b,examStatus,closedStatus, childr) -> if closedStatus=Closed then allPath else
 										(match p with
@@ -199,7 +199,9 @@ let rec find_assignments_fn thisPath allPath a = match a with
 										)
 ;;
 
-let find_assignments a = find_assignments_fn [] [] a;;
+let find_assignments_after_contrad a = find_assignments_fn [] [] a;;
+
+
 
 let rec fully_develop a = try let selected_node = select_node a in
 								(match selected_node with
@@ -207,10 +209,15 @@ let rec fully_develop a = try let selected_node = select_node a in
 							with ExaminedOrClosed -> a
 ;;
 
+let find_assignments rootNode = let developedNode = fully_develop rootNode in
+								let closedNode = contrad_path developedNode in
+								let assignments = find_assignments_after_contrad closedNode in
+								assignments;;
+
 let check_tautology a = let rootNode = Leaf(a,false,NotExamined,NotClosed) in
 						let developedNode = fully_develop rootNode in
 						let closedNode = contrad_path developedNode in
-						let assignments = find_assignments closedNode in
+						let assignments = find_assignments_after_contrad closedNode in
 						(match assignments with
 						| [] -> true
 						| _ -> false)
@@ -218,7 +225,7 @@ let check_tautology a = let rootNode = Leaf(a,false,NotExamined,NotClosed) in
 let check_contradiction a = let rootNode = Leaf(a,true,NotExamined,NotClosed) in
 						let developedNode = fully_develop rootNode in
 						let closedNode = contrad_path developedNode in
-						let assignments = find_assignments closedNode in
+						let assignments = find_assignments_after_contrad closedNode in
 						(match assignments with
 						| [] -> true
 						| _ -> false)
