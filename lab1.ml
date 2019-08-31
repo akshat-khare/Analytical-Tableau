@@ -150,7 +150,6 @@ let rec step_develop a thisPath = match thisPath with
 															Node(p,b,examStatus,closedStatus,newL)
 		) 
 ;;					
-(* exception Closed;; *)
 let rec contrad_path_fn rho a = match a with
 | Leaf(p, b, examStatus, closedStatus) -> if closedStatus=Closed then a else 
 											(match p with
@@ -213,20 +212,83 @@ let find_assignments rootNode = let developedNode = fully_develop rootNode in
 								let closedNode = contrad_path developedNode in
 								let assignments = find_assignments_after_contrad closedNode in
 								assignments;;
-
+(* exception NotClosed;; *)
+let rec isTotallyClosed closedNode = match closedNode with
+| Leaf(p,b,examStatus,closedStatus) -> (match closedStatus with
+										| Closed -> true
+										| NotClosed -> false)
+| Node(p,b,examStatus,closedStatus,childr) -> (match closedStatus with
+											| Closed -> true
+											| NotClosed -> (fold_left (fun acc x -> acc && (isTotallyClosed x)) true childr) )
+;;
 let check_tautology a = let rootNode = Leaf(a,false,NotExamined,NotClosed) in
 						let developedNode = fully_develop rootNode in
 						let closedNode = contrad_path developedNode in
 						let assignments = find_assignments_after_contrad closedNode in
 						(match assignments with
-						| [] -> true
-						| _ -> false)
+						| [] -> if ((isTotallyClosed closedNode)=true) then (true, closedNode, assignments) else (false, closedNode, assignments)
+						| _ -> (false, closedNode, assignments))
 ;;
 let check_contradiction a = let rootNode = Leaf(a,true,NotExamined,NotClosed) in
 						let developedNode = fully_develop rootNode in
 						let closedNode = contrad_path developedNode in
 						let assignments = find_assignments_after_contrad closedNode in
 						(match assignments with
-						| [] -> true
-						| _ -> false)
+						| [] -> if ((isTotallyClosed closedNode)=true) then (true, closedNode, assignments) else (false, closedNode, assignments)
+						| _ -> (false, closedNode, assignments))
 ;;
+
+let rec listMatcher e1 e2 fn = match (e1,e2) with
+							| ([],[]) -> true
+							| (x1::xs1, x2::xs2) -> if ((fn x1 x2)=true) then (listMatcher xs1 xs2 fn) else false
+							| _ -> false
+;;
+
+let rec checkIfTableauSame a b = match (a,b) with
+| (Leaf(c1,d1,e1,f1), Leaf(c2,d2,e2,f2)) -> ((c1=c2) && (d1=d2) && (e1=e2) && (f1=f2))
+| (Node(c1,d1,e1,f1,g1), Node(c2,d2,e2,f2,g2)) -> if ((c1=c2) && (d1=d2) && (e1=e2) && (f1=f2)) then (listMatcher g1 g2 checkIfTableauSame) else false
+| _ -> false
+;;
+
+let valid_tableau a = let fully_develop_given = fully_develop a in
+						let fully_develop_root = (match a with
+												| Leaf(p, b, examStatus, closedStatus) -> (fully_develop (Leaf(p,b, NotExamined, NotClosed)))
+												| Node(p, b, examStatus, closedStatus, childr) -> (fully_develop (Leaf(p,b,NotExamined, NotClosed)))) in 
+						(checkIfTableauSame fully_develop_given fully_develop_root)
+;;
+
+
+
+
+
+
+
+
+(* Examples *)
+let checkTrivialTauto = check_tautology (Impl(L("x"),L("x")));;
+let checkTrivialContrad = check_contradiction (And(L("x"),Not(L("x"))));;
+(* let prop1 = T;; *)
+(* Below is the example given in class *)
+(* let prop1 = Impl(Impl( Impl(L("x1"), L("x2")) ,L("x1")),L("x1"));; *)
+(* Below is a trivial contradiction *)
+(* let prop1 = And(F, L("x"));; *)
+(* Below is R *)
+(* let prop1 = Impl(Impl(Not(L("p")), Not(L("q"))) ,  Impl( Impl(Not(L("p")), L("q")) , L("p"))) *)
+(* Below is S *)
+(* let prop1 = Impl( Impl (L("p"), Impl(L("q"), L("r"))), Impl( Impl(L("p"), L("q")), Impl(L("p"), L("r")) ));; *)
+(* Below is K *)
+let prop1 = Impl ( L("p"), Impl(L("q"), L("p")));;
+let node1 = Leaf(prop1, true, NotExamined, NotClosed);;
+let checkTruth = check_tautology prop1;;
+let checkFalse = check_contradiction prop1;;
+let assignment = find_assignments node1;;
+let lengthassignment = length assignment;;
+let fullydevelopnode1 = fully_develop node1;;
+let contradnode1 = contrad_path fullydevelopnode1;;
+let assignmentsNode1 = find_assignments_after_contrad contradnode1;;
+let checkValidNodeOneStep a= let selected_node = select_node a in
+								(match selected_node with
+								| (b,c) -> (step_develop a c))
+;; 
+let validTableuCheck = valid_tableau (checkValidNodeOneStep node1);;
+
