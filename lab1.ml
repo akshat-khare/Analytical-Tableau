@@ -12,8 +12,39 @@ type node = Leaf of prop * bool * examinationStatus * closedPathStatus
 		;;
 let rec percolate a n = match n with
 | Leaf (p,b,examStatus,closedStatus) -> Node(p,b,examStatus,closedStatus,a)
-| Node (p,b,examStatus,closedStatus,l) -> Node(p,b,examStatus,closedStatus, map (percolate a) l );;
+| Node (p,b,examStatus,closedStatus,l) -> Node(p,b,examStatus,closedStatus, map (percolate a) l )
+;;
 
+exception ExaminedOrClosed;;
+
+
+
+let rec isUnExaminedInList l = match l with
+| [] -> raise ExaminedOrClosed
+| x::xs -> (match x with
+			 Leaf(p,b,examStatus,closedStatus) -> if examStatus=NotExamined then x else (isUnExaminedInList xs)
+			| Node(p,b, examStatus, closedStatus, childr) -> if examStatus=NotExamined then x else (isUnExaminedInList xs))
+;;
+
+let rec nodeIteratorExam childr l selectNodeFn= match childr with
+| [] -> raise ExaminedOrClosed
+| x::xs -> try selectNodeFn x l with ExaminedOrClosed -> nodeIteratorExam xs l selectNodeFn
+;;
+(* The following function is selecting unexamined node from bottom *)
+let rec select_node_fn a l= match a with
+| Leaf (p, b, examStatus, closedStatus) -> (match closedStatus with
+											| Closed -> raise ExaminedOrClosed
+											| NotClosed -> let newL = a::l in
+															isUnExaminedInList newL
+										)
+| Node (p, b, examStatus, closedStatus, childr)  -> (match closedStatus with
+												| Closed -> raise ExaminedOrClosed
+												| NotClosed -> let newL = a::l in
+																nodeIteratorExam childr newL select_node_fn
+										)
+;;
+
+let select_node a = select_node_fn a [];;
 
 let rec step_develop a = match a with
 | Leaf (p, b, examStatus, closedStatus) -> if (examStatus=Examined || closedStatus=Closed) then a else (match (p,b) with
