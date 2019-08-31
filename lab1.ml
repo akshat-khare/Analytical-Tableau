@@ -135,8 +135,28 @@ let rec step_develop a = match a with
 																					let newL = map (percolate [leftSecond;rightSecond]) l in
 																					Node (p, b, Examined, NotClosed, map step_develop newL)	
 																				)
-;;										
-
+;;			
+(* exception Closed;; *)
+let rec contrad_path_fn rho a = match a with
+| Leaf(p, b, examStatus, closedStatus) -> if closedStatus=Closed then a else 
+											(match p with
+											| L (c) -> try let ans = find (fun rhoele -> match rhoele with
+																		| (d,e) -> d=c) rho in
+														(match ans with
+														| (f,g) -> if g=b then a else Leaf(p,b,examStatus,Closed))
+													with Not_found -> a
+											| _ -> a)
+| Node(p, b, examStatus, closedStatus, childr) -> if closedStatus=Closed then a else 
+													(match p with
+													| L(c) -> try let ans = find (fun rhoele -> match rhoele with
+																					| (d,e) -> d=c) rho in
+																	(match ans with
+																	| (f,g) -> if g=b then (
+																		Node(p,b,examStatus,closedStatus, map (contrad_path_fn rho) childr)
+																	) else Node(p,b,examStatus,Closed,childr))
+																with Not_found -> Node(p,b,examStatus,closedStatus, map (contrad_path_fn ((c,b)::rho)) childr)
+													| _ -> Node(p,b,examStatus,closedStatus, map (contrad_path_fn rho) childr))						
+;;
 
 
 
